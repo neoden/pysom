@@ -31,11 +31,11 @@ class M:
 
     @staticmethod
     def nh_linear(dist, r):
-        return dist / r if dist <= r else 0
+        return dist / r if dist <= r and r > 0 else 0
 
     @staticmethod
     def nh_normal(dist, r):
-        return M.normal_linear_approximated(dist, r) if dist <= r else 0
+        return M.normal_linear_approximated(dist, r) if dist <= r and r > 0 else 0
 
     @staticmethod
     def init_random(magnitude, bias):
@@ -197,16 +197,20 @@ class SOM:
             print('conv: bad format - %s' % f)
 
     def load_data(self, filename):
-        self.data = []
+        self.data_table = {'colspec': [], 'inputs': [], 'other': []}
         reader = csv.reader(open(filename, 'r'), delimiter='\t')
         for n, row in enumerate(reader):
             if n == 0:
-                # load headers, ignore columns with names starting with underscore
-                colnames = list(row)
-                self.num_inputs = sum(i[0] != '-' for i in colnames)
+                for i in list(row):
+                    cs = {}
+                    cs['name'] = i
+                    cs['input'] = i[0] != '-'
+                    self.data_table['colspec'].append(cs)
+                self.num_inputs = sum(1 for i in self.data_table['colspec'] if i['input'])
             else:
-                dr = [SOM._conv(v, 'f') for v, t in zip(row, colnames) if t[0] != '-']
-                self.data.append(dr)
+                dr = [SOM._conv(v, 'f') for v in row]
+                self.data_table['rows'].append(dr)
+        self.data = ()
 
     @staticmethod
     def shuffle(d):
@@ -259,14 +263,15 @@ class SOM:
 
     def train(self, verbose):
         # copy dataset
-        data = list(self.data)
+        data = list(self.data['input'])
         
         for t in range(self.max_iterations):
             SOM.shuffle(data)
             alpha = self.alpha_func(t)
             radius = self.radius_func(t)
             if verbose: 
-                print('epoch: %d\talpha: %f\tradius: %f' % (t, alpha, radius))
+                aqe = self.avg_quantization_error()
+                print('epoch: %d\talpha: %f\tradius: %f\tAQE: %f' % (t, alpha, radius, aqe))
             for i in data:
                 bmu = self.find_bmu(i)
                 self.adjust_weights(i, bmu, t, alpha, radius)
@@ -282,6 +287,13 @@ class SOM:
                 d += SOM.vector_distance(node.weights, i.weights)
         return d / n
 
+    def avg_quantization_error(self):
+        dist = 0
+        for i in self.data['input']:
+            bmu = self.find_bmu(i)
+            dist += SOM.vector_distance(i, bmu.weights)
+        return dist / len(self.data['input'])
+
     def print_state(self, filename):
         f = open(filename, 'w')
 
@@ -294,7 +306,7 @@ class SOM:
 
         # bmu map
         m = {}
-        for i in self.data:
+        for i in self.data['input']:
             bmu_n = self.find_bmu(i).n
             m[bmu_n] = 1 if m.get(bmu_n) is None else m[bmu_n] + 1
 

@@ -16,3 +16,6 @@ optional arguments:
   --state STATE    File to save network state
   --odata ODATA    Show BMUs for training data
   -v, --verbose    Additional information while training
+
+
+ Data files are tab-separated with header row. Prefix column name with '-' to ignore that column for training.
