@@ -197,20 +197,23 @@ class SOM:
             print('conv: bad format - %s' % f)
 
     def load_data(self, filename):
-        self.data_table = {'colspec': [], 'inputs': [], 'other': []}
+        self.data = {'colspec': [], 'inputs': [], 'aux': []}
         reader = csv.reader(open(filename, 'r'), delimiter='\t')
         for n, row in enumerate(reader):
             if n == 0:
-                for i in list(row):
+                for k, i in enumerate(list(row)):
                     cs = {}
+                    cs['pos'] = k
                     cs['name'] = i
                     cs['input'] = i[0] != '-'
-                    self.data_table['colspec'].append(cs)
-                self.num_inputs = sum(1 for i in self.data_table['colspec'] if i['input'])
+                    self.data['colspec'].append(cs)
+                self.num_inputs = sum(1 for i in self.data['colspec'] if i['input'])
             else:
-                dr = [SOM._conv(v, 'f') for v in row]
-                self.data_table['rows'].append(dr)
-        self.data = ()
+                colspec = self.data['colspec']
+                input_row = [SOM._conv(v, 'f') for v, c in zip(row, colspec) if c['input']]
+                self.data['inputs'].append(input_row)
+                aux_row = [v for v, c in zip(row, colspec) if not c['input']]
+                self.data['aux'].append(aux_row)
 
     @staticmethod
     def shuffle(d):
@@ -227,7 +230,7 @@ class SOM:
 
     def node_xy(self, pos):
         if pos < self.size:
-            x, y = pos % self.width, int(pos / self.height)
+            x, y = pos % self.width, int(pos / self.width)
             return (x, y)
         else:
             print('node_xy: out of bounds')
@@ -263,7 +266,7 @@ class SOM:
 
     def train(self, verbose):
         # copy dataset
-        data = list(self.data['input'])
+        data = list(self.data['inputs'])
         
         for t in range(self.max_iterations):
             SOM.shuffle(data)
@@ -289,10 +292,10 @@ class SOM:
 
     def avg_quantization_error(self):
         dist = 0
-        for i in self.data['input']:
+        for i in self.data['inputs']:
             bmu = self.find_bmu(i)
             dist += SOM.vector_distance(i, bmu.weights)
-        return dist / len(self.data['input'])
+        return dist / len(self.data['inputs'])
 
     def print_state(self, filename):
         f = open(filename, 'w')
@@ -300,15 +303,9 @@ class SOM:
         # headers
         f.write('x\ty')
         for i in range(self.num_inputs):
-            f.write("\tw%d" % i)
-        f.write("\tavg_dist")
+            f.write('\tw%d' % i)
+        f.write('\tavg_dist')
         f.write('\n')
-
-        # bmu map
-        m = {}
-        for i in self.data['input']:
-            bmu_n = self.find_bmu(i).n
-            m[bmu_n] = 1 if m.get(bmu_n) is None else m[bmu_n] + 1
 
         # nodes
         for i in self.nodes:
@@ -323,16 +320,12 @@ class SOM:
     def print_data(self, filename):
         f = open(filename, 'w')
 
-        for i in range(self.num_inputs):
-            f.write('i%d\t' % i)
-        f.write('node_x\tnode_y')
+        f.write('row\tnode_x\tnode_y')
         f.write('\n')
 
-        for i in self.data:
-            for j in i:
-                f.write('%f\t' % j)
+        for n, i in enumerate(self.data['inputs']):
             bmu = self.find_bmu(i)
-            f.write('%d\t%d' % (bmu.x, bmu.y))
+            f.write('%d\t%d\t%d' % (n, bmu.x, bmu.y))
             f.write('\n')
 
         f.close()
