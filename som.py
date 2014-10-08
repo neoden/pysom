@@ -1,22 +1,22 @@
 # coding: utf-8
 
 import argparse, csv, random, math, sys
-import configparser
 from schema import *
 
-class DictParser(configparser.SafeConfigParser):
-    def as_dict(self):
-        d = dict(self._sections)
-        for k in d:
-            d[k] = dict(self._defaults, **d[k])
-            d[k].pop('__name__', None)
-        return d
+from dict_parser import DictParser
 
 class M:
     @staticmethod
     def md_linear(start, factor):
         def f(t):
             return max(start - (t * factor), 0)
+        return f
+
+    @staticmethod
+    def md_linear2(start, end, num_epochs):
+        factor = (end - start) / num_epochs
+        def f(t):
+            return max(start + (t * factor), 0)
         return f
 
     @staticmethod
@@ -97,15 +97,15 @@ class Node:
         )
 
 class SOM:
-    def __init__(self, config=None, data_file=None):
+    def __init__(self, width, height, config=None, data_file=None):
         # defaults
         self.width = 20
         self.height = 20
-        self.max_iterations = 100
+        self.max_iterations = 1000
 
         self.init_func = M.init_random(1, 0)
-        self.radius_func = M.md_linear(5, 3 / self.max_iterations)
-        self.alpha_func = M.md_linear(1, 1 / self.max_iterations)
+        self.radius_func = M.md_linear(self.width * 2 / 3, 3 / self.max_iterations)
+        self.alpha_func = M.md_linear2(0.05, 0.01, self.max_iterations)
         self.nh_func = M.nh_const
 
         if config is not None:
@@ -126,8 +126,8 @@ class SOM:
                 'height': Use(int)
             },
             Optional('alpha_func'):  {
-                'type': lambda x: x in ['linear', 'exp'],
-                'factor': Use(float)
+                'start': Use(float),
+                'end': Use(float)
             },
             Optional('radius_func'): {
                 'type': lambda x: x in ['linear', 'exp'],
@@ -152,10 +152,8 @@ class SOM:
 
         if 'alpha_func' in config:
             cf = config['alpha_func']
-            self.alpha_func = {
-                'linear': M.md_linear(1, cf['factor']),
-                'exp': M.md_exp(1, cf['factor'])
-            }[cf['type']]
+            self.alpha_func = M.md_linear2(
+				cf['start'], cf['end'], self.max_iterations)
 
         if 'radius_func' in config:
             cf = config['radius_func']
@@ -336,7 +334,8 @@ def main():
     parser.add_argument('--data', help='Training dataset', required=True)
     parser.add_argument('--state', help='File to save network state', required=True)
     parser.add_argument('--odata', help='Show BMUs for training data')
-    parser.add_argument('-v', '--verbose', help='Additional information while training', action='store_true')
+    parser.add_argument('-v', '--verbose', help='Additional information while training', 
+action='store_true')
     args = parser.parse_args()
 
     som = SOM()
