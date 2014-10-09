@@ -1,87 +1,71 @@
 # coding: utf-8
 
-import argparse, csv, random, math, sys
-from schema import *
+import random, math
 
-from dict_parser import DictParser
+def md_linear(**kwargs):
+    """linear decline from start to end over num_epochs"""
+    start, end, num_epochs = \
+        float(kwargs['start']), float(kwargs['end']), int(kwargs['epochs'])
+    factor = (end - start) / num_epochs
+    def f(t):
+        return start + (t * factor)
+    return f
 
-class M:
-    @staticmethod
-    def md_linear(start, factor):
-        def f(t):
-            return max(start - (t * factor), 0)
-        return f
+def md_exp(**kwargs):
+    """exponential decline from start with factor"""
+    start, factor = float(kwargs['start']), float(kwargs['factor'])
+    def f(t):
+        return math.exp(-t * factor) * start
+    return f
 
-    @staticmethod
-    def md_linear2(start, end, num_epochs):
-        factor = (end - start) / num_epochs
-        def f(t):
-            return max(start + (t * factor), 0)
-        return f
+def nh_const(dist, r):
+    """neighbourhood function that is constant within r"""
+    return 1 if dist <= r else 0
 
-    @staticmethod
-    def md_exp(start, factor):
-        def f(t):
-            return math.exp(-t * factor) * start
-        return f
+def nh_linear(dist, r):
+    """neighbourhood function that is linearly decline to 0 within r"""
+    return dist / r if dist <= r and r > 0 else 0
 
-    @staticmethod
-    def nh_const(dist, r):
-        return 1 if dist <= r else 0
+def nh_normal(dist, r):
+    """neighbourhood function that is normally distributed from center to r
+       outside radius r it is equal to 0"""
+    return normal_linear_approximated(dist, r) if dist <= r and r > 0 else 0
 
-    @staticmethod
-    def nh_linear(dist, r):
-        return dist / r if dist <= r and r > 0 else 0
+# normal distribution with mu=0, sigma=0.4
+# equals 1 at x=0
+t_normal = [
+    0.00000372, 0.00001257, 0.00003996, 0.00011930, 0.00033458,
+    0.00088149, 0.00218171, 0.00507262, 0.01107962, 0.02273391,
+    0.04382075, 0.07934913, 0.13497742, 0.21569330, 0.32379399,
+    0.45662271, 0.60492681, 0.75284358, 0.88016332, 0.96667029,
+    0.99735570, 0.96667029, 0.88016332, 0.75284358, 0.60492681,
+    0.45662271, 0.32379399, 0.21569330, 0.13497742, 0.07934913,
+    0.04382075, 0.02273391, 0.01107962, 0.00507262, 0.00218171,
+    0.00088149, 0.00033458, 0.00011930, 0.00003996, 0.00001257,
+    0.00000372
+]
 
-    @staticmethod
-    def nh_normal(dist, r):
-        return M.normal_linear_approximated(dist, r) if dist <= r and r > 0 else 0
+def normal_rough(x, factor):
+    """approximate optimized normal distribution
+       round to closest value from t_normal"""
+    cell = round(x / factor * 10)
+    if cell < -20 or cell > 20:
+        return 0
+    else:
+        return t_normal[cell+20]
 
-    @staticmethod
-    def init_random(magnitude, bias):
-        def f(num_inputs):
-            return [
-                random.random() * magnitude + bias
-                for i in range(num_inputs)
-            ]
-        return f   
-
-    # normal distribution with mu=0, sigma=0.4
-    t_normal = [
-        0.00000372, 0.00001257, 0.00003996, 0.00011930, 0.00033458,
-        0.00088149, 0.00218171, 0.00507262, 0.01107962, 0.02273391,
-        0.04382075, 0.07934913, 0.13497742, 0.21569330, 0.32379399,
-        0.45662271, 0.60492681, 0.75284358, 0.88016332, 0.96667029,
-        0.99735570, 0.96667029, 0.88016332, 0.75284358, 0.60492681,
-        0.45662271, 0.32379399, 0.21569330, 0.13497742, 0.07934913,
-        0.04382075, 0.02273391, 0.01107962, 0.00507262, 0.00218171,
-        0.00088149, 0.00033458, 0.00011930, 0.00003996, 0.00001257,
-        0.00000372
-    ]
-
-    @staticmethod
-    def normal_rough(x, factor):
-        # approximate optimized normal distribution
-        # round to closest value from t_normal
-        cell = round(x / factor * 10)
-        if cell < -20 or cell > 20:
-            return 0
-        else:
-            return M.t_normal[cell+20]
-
-    @staticmethod
-    def normal_linear_approximated(x, factor):
-        # linear approximation when x falls between known values
-        xn = x / factor * 10
-        xf = math.floor(xn)
-        xc = math.ceil(xn)
-        if xf < -20 or xc > 20:
-            return 0
-        else:
-            frac = xn - xf
-            yf = M.t_normal[xf+20]
-            yc = M.t_normal[xc+20]
-            return yf + (yc - yf) * frac
+def normal_linear_approximated(x, factor):
+    """linear approximation when x falls between known values"""
+    xn = x / factor * 10
+    xf = math.floor(xn)
+    xc = math.ceil(xn)
+    if xf < -20 or xc > 20:
+        return 0
+    else:
+        frac = xn - xf
+        yf = t_normal[xf+20]
+        yc = t_normal[xc+20]
+        return yf + (yc - yf) * frac
 
 class Node:
     def __init__(self, n, x, y, w):
@@ -91,150 +75,51 @@ class Node:
         self.weights = w
 
     def distance_to(self, node):
+        """euclidian distance to another node based on (x, y) node location"""
         return math.sqrt(
             (self.x - node.x) * (self.x - node.x) 
             + (self.y - node.y) * (self.y - node.y)
         )
 
 class SOM:
-    def __init__(self, width, height, config=None, data_file=None):
-        # defaults
-        self.width = 20
-        self.height = 20
-        self.max_iterations = 1000
-
-        self.init_func = M.init_random(1, 0)
-        self.radius_func = M.md_linear(self.width * 2 / 3, 3 / self.max_iterations)
-        self.alpha_func = M.md_linear2(0.05, 0.01, self.max_iterations)
-        self.nh_func = M.nh_const
-
-        if config is not None:
-            self.load_config(config)
-
-        self.size = self.height * self.width
-        self.num_inputs = 0
-
-        if data_file is not None:
-            self.load_data(data_file)
-
-    def load_config(self, c):
-        # validate against schema
-        config = Schema({
-            Optional('som'): {
-                'max_iterations': Use(int),
-                'width': Use(int),
-                'height': Use(int)
-            },
-            Optional('alpha_func'):  {
-                'start': Use(float),
-                'end': Use(float)
-            },
-            Optional('radius_func'): {
-                'type': lambda x: x in ['linear', 'exp'],
-                'start_radius': Use(float),
-                'factor': Use(float)
-            },
-            Optional('nh_func'): {
-                'type': lambda x: x in ['const', 'linear', 'normal']
-            },
-            Optional('init_func'): {
-                'type': 'random',
-                'magnitude': Use(float),
-                'bias': Use(float)
-            }
-        }).validate(c)
-
-        # load properties
-        if 'som' in config:
-            self.max_iterations = config['som']['max_iterations']
-            self.width = config['som']['width']
-            self.height = config['som']['height']
-
-        if 'alpha_func' in config:
-            cf = config['alpha_func']
-            self.alpha_func = M.md_linear2(
-				cf['start'], cf['end'], self.max_iterations)
-
-        if 'radius_func' in config:
-            cf = config['radius_func']
-            self.radius_func = {
-                'linear': M.md_linear(cf['start_radius'], cf['factor']),
-                'exp': M.md_exp(cf['start_radius'], cf['factor'])
-            }[cf['type']]
-
-        if 'nh_func' in config:
-            cf = config['nh_func']
-            self.nh_func = {
-                'const': M.nh_const,
-                'linear': M.nh_linear,
-                'normal': M.nh_normal
-            }[cf['type']]
-
-        if 'init_func' in config:
-            cf = config['init_func']
-            self.init_func = {
-                'random': M.init_random(cf['magnitude'], cf['bias'])
-            }[cf['type']]
-
-        # post-processing
-        self.size = self.height * self.width
-
-    def init_state(self):
+    def __init__(self):
         self.nodes = []
-        for i in range(self.size):
-            x, y = self.node_xy(i)
-            self.nodes.append(Node(i, x, y, self.init_func(self.num_inputs)))
 
-    @staticmethod
-    def _conv(v, f):
-        if f == 'f':
-            return float(v)
-        elif f == 's':
-            return v
-        else:
-            print('conv: bad format - %s' % f)
+    def setup(self, width, height, num_inputs):
+        self.width = width
+        self.height = height
+        self.num_inputs = num_inputs
 
-    def load_data(self, filename):
-        self.data = {'colspec': [], 'inputs': [], 'aux': []}
-        reader = csv.reader(open(filename, 'r'), delimiter='\t')
-        for n, row in enumerate(reader):
-            if n == 0:
-                for k, i in enumerate(list(row)):
-                    cs = {}
-                    cs['pos'] = k
-                    cs['name'] = i
-                    cs['input'] = i[0] != '-'
-                    self.data['colspec'].append(cs)
-                self.num_inputs = sum(1 for i in self.data['colspec'] if i['input'])
-            else:
-                colspec = self.data['colspec']
-                input_row = [SOM._conv(v, 'f') for v, c in zip(row, colspec) if c['input']]
-                self.data['inputs'].append(input_row)
-                aux_row = [v for v, c in zip(row, colspec) if not c['input']]
-                self.data['aux'].append(aux_row)
+    def init_random(self, magnitude, bias):
+        """create node map initialized with random values"""
+        self.nodes = []
+        for y in range(self.height):
+            for x in range(self.width):
+                n = y * self.width + x
+                self.nodes.append(Node(n, x, y, 
+                    [random.random() * magnitude + bias for i in range(self.num_inputs)]))
+
+    def node_at(self, x, y):
+        pos = y * self.width + x
+        return self.nodes[pos]
 
     @staticmethod
     def shuffle(d):
+        """shuffle dataset"""
         for i in reversed(range(1, len(d))):
             j = int(random.random() * i)
             d[i], d[j] = d[j], d[i]
 
     @staticmethod
     def vector_distance(v1, v2):
+        """euclidian distance between n-dimensional vectors"""
         s = 0
         for x1, x2 in zip(v1, v2):
             s += (x1 - x2) * (x1 - x2)
         return math.sqrt(s)
 
-    def node_xy(self, pos):
-        if pos < self.size:
-            x, y = pos % self.width, int(pos / self.width)
-            return (x, y)
-        else:
-            print('node_xy: out of bounds')
-
     def find_bmu(self, vd):
-        # find Best Matching Unit
+        """find Best Matching Unit for a given data vector"""
         min_distance = float('+inf')
         bmu = []
         
@@ -253,106 +138,96 @@ class SOM:
         
         return bmu[int(random.random() * len(bmu))]
 
-    def adjust_weights(self, vd, bmu, t, alpha, radius):
+    def adjust_weights(self, vd, bmu, t, alpha, radius, nh_func):
+        """adjust map according to BMU"""
         r_inputs = range(self.num_inputs)
         for node in self.nodes:
-            _nhf = self.nh_func(bmu.distance_to(node), radius)
+            _nhf = nh_func(bmu.distance_to(node), radius)
             if _nhf > 0:
                 w = node.weights
                 for j in r_inputs:
                     w[j] = w[j] + _nhf * alpha * (vd[j] - w[j])
 
-    def train(self, verbose):
+    def train(self, data, max_iterations, alpha_func, radius_func, nh_func, verbose):
+        """train SOM against a given dataset"""
+
         # copy dataset
-        data = list(self.data['inputs'])
+        data = list(data)
         
-        for t in range(self.max_iterations):
+        if verbose:
+            print('epoch\talpha\tradius\tAQE')
+        for t in range(max_iterations):
             SOM.shuffle(data)
-            alpha = self.alpha_func(t)
-            radius = self.radius_func(t)
-            if verbose: 
-                aqe = self.avg_quantization_error()
-                print('epoch: %d\talpha: %f\tradius: %f\tAQE: %f' % (t, alpha, radius, aqe))
+            alpha = alpha_func(t)
+            radius = radius_func(t)
+            if verbose:
+                aqe = self.avg_quantization_error(data)
+                print('%d\t%f\t%f\t%f' % (t, alpha, radius, aqe))
             for i in data:
                 bmu = self.find_bmu(i)
-                self.adjust_weights(i, bmu, t, alpha, radius)
+                self.adjust_weights(i, bmu, t, alpha, radius, nh_func)
 
-    def avg_distance_to_nh(self, node):
-        n = 0
-        d = 0
-        radius = 2
-        for i in self.nodes:
-            nh = M.nh_const(node.distance_to(i), radius)
-            if nh > 0:
-                n += 1
-                d += SOM.vector_distance(node.weights, i.weights)
-        return d / n
-
-    def avg_quantization_error(self):
+    def avg_quantization_error(self, data):
+        """calculate map total error"""
         dist = 0
-        for i in self.data['inputs']:
+        for i in data:
             bmu = self.find_bmu(i)
             dist += SOM.vector_distance(i, bmu.weights)
-        return dist / len(self.data['inputs'])
+        return dist / len(data)
 
-    def print_state(self, filename):
+    def save_state(self, filename, columns=None):
+        """save weights to file"""
         f = open(filename, 'w')
 
         # headers
-        f.write('x\ty')
+        f.write('n\tx\ty')
         for i in range(self.num_inputs):
-            f.write('\tw%d' % i)
-        f.write('\tavg_dist')
+            colname = columns[i] if columns else 'w%d' % i
+            f.write('\t%s' % colname)
         f.write('\n')
 
         # nodes
         for i in self.nodes:
-            f.write('%d\t%d' % (i.x, i.y))
+            f.write('%d\t%d\t%d' % (i.n, i.x, i.y))
             for j in range(self.num_inputs):
                 f.write('\t%f' % i.weights[j])
-            f.write('\t%f' % self.avg_distance_to_nh(i))
             f.write('\n')
 
         f.close()
 
-    def print_data(self, filename):
-        f = open(filename, 'w')
+    def load_state(self, filename):
+        """load weights from file"""
+        self.nodes = []
 
-        f.write('row\tnode_x\tnode_y')
-        f.write('\n')
+        f = open(filename)
+        next(f)
 
-        for n, i in enumerate(self.data['inputs']):
-            bmu = self.find_bmu(i)
-            f.write('%d\t%d\t%d' % (n, bmu.x, bmu.y))
-            f.write('\n')
+        for r in f:
+            row = r.strip().split('\t')
+            n, x, y, weights = int(row[0]), int(row[1]), int(row[2]), [float(x) for x in row[3:]]
+            self.nodes.append(Node(n, x, y, weights))
+
+        self.width = x + 1
+        self.height = y + 1
+        self.num_inputs = len(weights)
 
         f.close()
 
-def main():
-    parser = argparse.ArgumentParser(description='Train SOM network')
-    parser.add_argument('--config', help='Configuration file', required=True)
-    parser.add_argument('--data', help='Training dataset', required=True)
-    parser.add_argument('--state', help='File to save network state', required=True)
-    parser.add_argument('--odata', help='Show BMUs for training data')
-    parser.add_argument('-v', '--verbose', help='Additional information while training', 
-action='store_true')
-    args = parser.parse_args()
+    def load_data(self, filename):
+        """load dataset from file
+           skip columns with name starting from '-'
+           """
+        data = []
 
-    som = SOM()
+        f = open(filename)
+        columns = [x for x in next(f).strip().split('\t')]
+        col_inputs = [x for x in columns if x[0] != '-']
 
-    parser = DictParser()
-    parser.read(args.config)
-    config = parser.as_dict()
+        for r in f:
+            row = r.strip().split('\t')
+            data.append([float(x) for c, x in zip(columns, row) if c[0] != '-'])
 
-    som.load_config(config)
-    som.load_data(args.data) 
-    som.init_state()
+        if len(col_inputs) != self.num_inputs:
+            raise Exception("number of inputs in the file doesn't match network setup")
 
-    som.train(args.verbose)
-    som.print_state(args.state)
-
-    if args.odata is not None:
-        som.print_data(args.odata)
-
-if __name__ == '__main__':
-    main()
+        return (col_inputs, data)

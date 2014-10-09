@@ -34,7 +34,7 @@ def kruskal(graph):
             minimum_spanning_tree.add(edge)
     return minimum_spanning_tree
 
-def test():
+def _test():
     graph = {
         'vertices': ['A', 'B', 'C', 'D', 'E', 'F'],
         'edges': set([
@@ -54,4 +54,4 @@ def test():
     assert kruskal(graph) == minimum_spanning_tree
 
 if __name__ == '__main__':
-    test()
+    _test()
