@@ -1,21 +1,20 @@
-pysom
-=====
+usage: somclt.py [-h] [-i INIT] -s STATE [-d DATA] [--alpha ALPHA]
+                 [--radius RADIUS] [--nh NH] [--maxiter MAXITER] [-v]
+                 [command]
 
-Self Organizing Map (Kohonen's neural network)
+SOM network command-line tool
 
-
-usage: som.py [-h] --config CONFIG --data DATA --state STATE [--odata ODATA]
-              [-v]
-
-Train SOM network
+positional arguments:
+  command               Command to perform: init|train|clusot
 
 optional arguments:
-  -h, --help       show this help message and exit
-  --config CONFIG  Configuration file
-  --data DATA      Training dataset
-  --state STATE    File to save network state
-  --odata ODATA    Show BMUs for training data
-  -v, --verbose    Additional information while training
-
-
- Data files are tab-separated with header row. Prefix column name with '-' to ignore that column for training.
+  -h, --help            show this help message and exit
+  -i INIT, --init INIT  Init with dimensions: width*height*inputs
+  -s STATE, --state STATE
+                        Map state file name
+  -d DATA, --data DATA  Training dataset
+  --alpha ALPHA         Training function parameters: variant,arg1,arg2...
+  --radius RADIUS       Radius function parameters: variant,arg1,arg2...
+  --nh NH               Neighbourhood function variant
+  --maxiter MAXITER     Maximum iterations
+  -v, --verbose         Additional information while training
