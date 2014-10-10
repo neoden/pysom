@@ -175,6 +175,24 @@ class SOM:
             dist += SOM.vector_distance(i, bmu.weights)
         return dist / len(data)
 
+    def umatrix(self):
+        nn = [(-1, -1), (-1, 0), (-1, 1),
+              ( 0, -1), (),      ( 0, 1),
+              ( 1, -1), ( 1, 0), ( 1, 1)]
+        dist = 0
+        nd = 0
+        for i in self.nodes:
+            for j in nn:
+                if not j:
+                    continue
+                dx, dy = j
+                nx, ny = i.x + dx, i.y + dy
+                if nx < 0 or nx >= self.width or ny < 0 or ny >= self.height:
+                    continue
+                nd += 1
+                dist += SOM.vector_distance(self.node_at(nx, ny).weights, i.weights)
+            yield i, dist / nd
+
     def save_state(self, filename, columns=None):
         """save weights to file"""
         f = open(filename, 'w')

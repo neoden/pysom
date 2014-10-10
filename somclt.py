@@ -14,7 +14,7 @@ DEFAULT_RADIUS_SPAN = 2/3
 
 def main():
     parser = argparse.ArgumentParser(description='SOM network command-line tool')
-    parser.add_argument('command', nargs='?', help='Command to perform: init|train|clusot')
+    parser.add_argument('command', nargs='?', help='Command to perform: init|train|clusot|umatrix')
     parser.add_argument('-i', '--init', help='Init with dimensions: width*height*inputs')
     parser.add_argument('-s', '--state', help='Map state file name', required=True)
     parser.add_argument('-d', '--data', help='Training dataset')
@@ -100,6 +100,12 @@ def main():
         print('n\tx\ty\tclusot')
         for i in som.nodes:
             print('%d\t%d\t%d\t%f' % (i.n, i.x, i.y, clusot(i, som, data)))
+    elif args.command == 'umatrix':
+        som.load_state(args.state)
+        print('n\tx\ty\tdist')
+        for i in som.umatrix():
+            node, dist = i
+            print('%d\t%d\t%d\t%f' % (node.n, node.x, node.y, dist))
     else:
         print('unknown command: %s' % args.command)
 
