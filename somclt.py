@@ -11,6 +11,7 @@ DEFAULT_INIT_RANDOM_BIAS = 0
 DEFAULT_ALPHA_START = 0.5
 DEFAULT_ALPHA_END = 0.01
 DEFAULT_RADIUS_SPAN = 2/3
+DEFAULT_RADIUS_END = 0
 
 def main():
     parser = argparse.ArgumentParser(description='SOM network command-line tool')
@@ -73,7 +74,7 @@ def main():
         else:
             radius_func = md_linear(
                 start=DEFAULT_RADIUS_SPAN * max(som.width, som.height),
-                end=0,
+                end=DEFAULT_RADIUS_END,
                 epochs=max_iterations)
 
         if args.nh:

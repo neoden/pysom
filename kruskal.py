@@ -17,7 +17,7 @@ def union(vertice1, vertice2, parent, rank):
             parent[root1] = root2
             if rank[root1] == rank[root2]: rank[root2] += 1
 
-def kruskal(graph):
+def kruskal(graph, negative=False):
     parent = dict()
     rank = dict()
 
@@ -25,8 +25,8 @@ def kruskal(graph):
         make_set(vertice, parent, rank)
 
     minimum_spanning_tree = set()
-    edges = list(graph['edges'])
-    edges.sort()
+    edges = graph['edges']
+    edges.sort(reverse=negative)
     for edge in edges:
         weight, vertice1, vertice2 = edge
         if find(vertice1, parent) != find(vertice2, parent):

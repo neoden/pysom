@@ -81,6 +81,9 @@ class Node:
             + (self.y - node.y) * (self.y - node.y)
         )
 
+    def __lt__(self, other):
+        return self.n < other.n
+
 class SOM:
     def __init__(self):
         self.nodes = []
@@ -179,9 +182,9 @@ class SOM:
         nn = [(-1, -1), (-1, 0), (-1, 1),
               ( 0, -1), (),      ( 0, 1),
               ( 1, -1), ( 1, 0), ( 1, 1)]
-        dist = 0
-        nd = 0
         for i in self.nodes:
+            dist = 0
+            nd = 0
             for j in nn:
                 if not j:
                     continue
@@ -249,3 +252,22 @@ class SOM:
             raise Exception("number of inputs in the file doesn't match network setup")
 
         return (col_inputs, data)
+
+    def make_graph(self, values):
+        """make graph from an iterable with vertices and their values
+           edge weight between vertices with values a and b
+           is defined as min(a, b)
+           """
+        edges = []
+
+        for node, value in zip(self.nodes, values):
+            if node.x < self.width - 1:
+                node2 = self.node_at(node.x + 1, node.y)
+                value2 = values[node2.n]
+                edges.append((min(value, value2), node, node2))
+            if node.y < self.height - 1:
+                node2 = self.node_at(node.x, node.y + 1)
+                value2 = values[node2.n]
+                edges.append((min(value, value2), node, node2))
+
+        return {'vertices': self.nodes, 'edges': edges}
