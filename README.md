@@ -1,3 +1,4 @@
+<pre>
 usage: somclt.py [-h] [-i INIT] -s STATE [-d DATA] [--alpha ALPHA]
                  [--radius RADIUS] [--nh NH] [--maxiter MAXITER] [-v]
                  [command]
@@ -5,7 +6,7 @@ usage: somclt.py [-h] [-i INIT] -s STATE [-d DATA] [--alpha ALPHA]
 SOM network command-line tool
 
 positional arguments:
-  command               Command to perform: init|train|clusot
+  command               Command to perform: init|train|clusot|umatrix|process
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -18,3 +19,4 @@ optional arguments:
   --nh NH               Neighbourhood function variant
   --maxiter MAXITER     Maximum iterations
   -v, --verbose         Additional information while training
+</pre>
