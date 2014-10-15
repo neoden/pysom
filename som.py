@@ -84,6 +84,9 @@ class Node:
     def __lt__(self, other):
         return self.n < other.n
 
+    def __repr__(self):
+        return '%s(%d)' % (self.__class__.__name__, self.n)
+
 class SOM:
     def __init__(self):
         self.nodes = []
@@ -115,10 +118,12 @@ class SOM:
 
     @staticmethod
     def vector_distance(v1, v2):
-        """euclidian distance between n-dimensional vectors"""
+        """euclidian distance between n-dimensional vectors
+           missing values are skipped"""
         s = 0
         for x1, x2 in zip(v1, v2):
-            s += (x1 - x2) * (x1 - x2)
+            if x1 and x2:
+                s += (x1 - x2) * (x1 - x2)
         return math.sqrt(s)
 
     def find_bmu(self, vd):
@@ -246,28 +251,10 @@ class SOM:
 
         for r in f:
             row = r.strip().split('\t')
-            data.append([float(x) for c, x in zip(columns, row) if c[0] != '-'])
+            data.append(
+                [float(x) if x != '' else None for c, x in zip(columns, row) if c[0] != '-'])
 
         if len(col_inputs) != self.num_inputs:
             raise Exception("number of inputs in the file doesn't match network setup")
 
         return (col_inputs, data)
-
-    def make_graph(self, values):
-        """make graph from an iterable with vertices and their values
-           edge weight between vertices with values a and b
-           is defined as min(a, b)
-           """
-        edges = []
-
-        for node, value in zip(self.nodes, values):
-            if node.x < self.width - 1:
-                node2 = self.node_at(node.x + 1, node.y)
-                value2 = values[node2.n]
-                edges.append((min(value, value2), node, node2))
-            if node.y < self.height - 1:
-                node2 = self.node_at(node.x, node.y + 1)
-                value2 = values[node2.n]
-                edges.append((min(value, value2), node, node2))
-
-        return {'vertices': self.nodes, 'edges': edges}

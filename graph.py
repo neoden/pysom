@@ -1,3 +1,24 @@
+class Edge:
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+    
+    def __repr__(self):
+        return '%s(%s, %s)' % (
+            self.__class__.__name__, repr(self.left), repr(self.right))
+    
+class WeightedEdge(Edge):
+    def __init__(self, left, right, weight):
+        self.weight = weight
+        super(WeightedEdge, self).__init__(left, right)
+
+    def __lt__(self, edge2):
+        return self.weight < edge2.weight
+    
+    def __repr__(self):
+        return '%s(%s, %s, %f)' % (
+            self.__class__.__name__, repr(self.left), repr(self.right), float(self.weight))
+
 def find(vertice, parent):
     if parent[vertice] != vertice:
         parent[vertice] = find(parent[vertice], parent)
@@ -13,7 +34,9 @@ def union(vertice1, vertice2, parent, rank):
             parent[root1] = root2
             if rank[root1] == rank[root2]: rank[root2] += 1
 
-def kruskal(graph, negative=False):
+def mst(graph, negative=False):
+    '''minumum spanning tree for a given graph
+       Kruskal's algorithm'''
     parent = dict()
     rank = dict()
 
@@ -22,17 +45,16 @@ def kruskal(graph, negative=False):
         rank[vertice] = 0
 
     minimum_spanning_tree = []
-    edges = graph['edges']
+    edges = list(graph['edges'])
     edges.sort(reverse=negative)
     for edge in edges:
-        weight, vertice1, vertice2 = edge
-        if find(vertice1, parent) != find(vertice2, parent):
-            union(vertice1, vertice2, parent, rank)
+        if find(edge.left, parent) != find(edge.right, parent):
+            union(edge.left, edge.right, parent, rank)
             minimum_spanning_tree.append(edge)
     return {'vertices': graph['vertices'], 'edges': minimum_spanning_tree}
 
 def dfs(graph):
-    """non-recursive depth-first search"""
+    '''non-recursive depth-first search'''
     result = []
     white = set(graph['vertices'])
     stack = []
@@ -49,11 +71,10 @@ def dfs(graph):
                     white.remove(v)
                     component.add(v)
                 for e in graph['edges']:
-                    _, left, right = e
-                    if left == v:
-                        w = right
-                    elif right == v:
-                        w = left
+                    if e.left == v:
+                        w = e.right
+                    elif e.right == v:
+                        w = e.left
                     else:
                         continue
                     if w in white:
@@ -62,22 +83,22 @@ def dfs(graph):
 
 def _test():
     graph = {
-        'vertices': ['A', 'B', 'C', 'D', 'E', 'F'],
-        'edges': [
+        'vertices': set(['A', 'B', 'C', 'D', 'E', 'F']),
+        'edges': set([
             (1, 'A', 'B'),
             (5, 'A', 'C'),
             (3, 'A', 'D'),
             (4, 'B', 'C'),
             (2, 'B', 'D'),
             (1, 'C', 'D'),
-            ]
+            ])
         }
     minimum_spanning_tree = set([
         (1, 'A', 'B'),
         (2, 'B', 'D'),
         (1, 'C', 'D'),
         ])
-    assert set(kruskal(graph)) == minimum_spanning_tree
+    assert set(mst(graph)) == minimum_spanning_tree
 
     dfs_result = ([set(['A', 'B', 'C', 'D']), set(['E']), set(['F'])], 3)
     assert dfs(graph) == dfs_result

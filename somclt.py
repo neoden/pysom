@@ -15,7 +15,7 @@ DEFAULT_RADIUS_END = 0
 
 def main():
     parser = argparse.ArgumentParser(description='SOM network command-line tool')
-    parser.add_argument('command', nargs='?', help='Command to perform: init|train|clusot|umatrix')
+    parser.add_argument('command', nargs='?', help='Command to perform: init|train|clusot|umatrix|process')
     parser.add_argument('-i', '--init', help='Init with dimensions: width*height*inputs')
     parser.add_argument('-s', '--state', help='Map state file name', required=True)
     parser.add_argument('-d', '--data', help='Training dataset')
@@ -107,6 +107,16 @@ def main():
         for i in som.umatrix():
             node, dist = i
             print('%d\t%d\t%d\t%f' % (node.n, node.x, node.y, dist))
+    elif args.command == 'bmu':
+        if not args.data:
+            raise Exception('dataset not specified')        
+        som.load_state(args.state)
+        columns, data = som.load_data(args.data)
+        umatrix = [dist for node, dist in som.umatrix()]
+        print('row\tnode\tx\ty\tumatrix')
+        for n, i in enumerate(data):
+            node = som.find_bmu(i)
+            print('%d\t%d\t%d\t%d\t%f' % (n, node.n, node.x, node.y, umatrix[node.n]))
     else:
         print('unknown command: %s' % args.command)
 
