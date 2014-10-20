@@ -233,7 +233,8 @@ class SOM:
         self.nodes = []
 
         f = open(filename)
-        next(f)
+        r = next(f)
+        self.columns = r.strip().split('\t')[3:]
 
         for r in f:
             row = r.strip().split('\t')

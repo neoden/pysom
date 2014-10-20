@@ -45,6 +45,7 @@ def main():
             raise Exception('map dimensions not specified')
         init_som()
         som.save_state(args.state)
+
     elif args.command == 'train':
         if not args.data:
             raise Exception('training dataset not specified')
@@ -101,6 +102,7 @@ def main():
         som.set_columns(columns)
         som.train(data, max_iterations, alpha_func, radius_func, nh_func, args.verbose, args.brief)
         som.save_state(args.state)
+
     elif args.command == 'clusot':
         if not args.data:
             raise Exception('dataset not specified')
@@ -109,12 +111,14 @@ def main():
         print('n\tx\ty\tclusot')
         for i in som.nodes:
             print('%d\t%d\t%d\t%f' % (i.n, i.x, i.y, clusot(i, som, data)))
+
     elif args.command == 'umatrix':
         som.load_state(args.state)
         print('n\tx\ty\tdist')
         for i in som.umatrix():
             node, dist = i
             print('%d\t%d\t%d\t%f' % (node.n, node.x, node.y, dist))
+
     elif args.command == 'bmu':
         if not args.data:
             raise Exception('dataset not specified')        
@@ -125,6 +129,7 @@ def main():
         for n, i in enumerate(data):
             node = som.find_bmu(i)
             print('%d\t%d\t%d\t%d\t%f' % (n, node.n, node.x, node.y, umatrix[node.n]))
+
     else:
         print('unknown command: %s' % args.command)
 
