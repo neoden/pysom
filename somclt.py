@@ -16,9 +16,10 @@ DEFAULT_RADIUS_END = 0
 def main():
     parser = argparse.ArgumentParser(description='SOM network command-line tool')
     parser.add_argument('command', nargs='?', help='Command to perform: init|train|clusot|umatrix|process')
-    parser.add_argument('-i', '--init', help='Init with dimensions: width*height*inputs')
+    parser.add_argument('-i', '--init', help='Init with dimensions: width*height*inputs,magn,bias')
     parser.add_argument('-s', '--state', help='Map state file name', required=True)
     parser.add_argument('-d', '--data', help='Training dataset')
+    parser.add_argument('-b', '--brief', help='Train using 1/10-th of dataset', action='store_true')
     parser.add_argument('--alpha', help='Training function parameters: variant,arg1,arg2...')
     parser.add_argument('--radius', help='Radius function parameters: variant,arg1,arg2...')
     parser.add_argument('--nh', help='Neighbourhood function variant')
@@ -29,9 +30,15 @@ def main():
     som = SOM()
 
     def init_som():
-        width, height, num_inputs = [int(x) for x in args.init.split('*')]
+        dim, *rest = args.init.split(',')
+        width, height, num_inputs = [int(x) for x in dim.split('*')]
         som.setup(width, height, num_inputs)
-        som.init_random(DEFAULT_INIT_RANDOM_MAGN, DEFAULT_INIT_RANDOM_BIAS)        
+
+        if len(rest) == 2:
+            magn, bias = float(rest[0]), float(rest[1])
+        else:
+            magn, bias = DEFAULT_INIT_RANDOM_MAGN, DEFAULT_INIT_RANDOM_BIAS
+        som.init_random(magn, bias)
 
     if args.command == 'init':
         if not args.m:
@@ -91,8 +98,9 @@ def main():
             nh_func = nh_normal
 
         columns, data = som.load_data(args.data)
-        som.train(data, max_iterations, alpha_func, radius_func, nh_func, args.verbose)
-        som.save_state(args.state, columns)
+        som.set_columns(columns)
+        som.train(data, max_iterations, alpha_func, radius_func, nh_func, args.verbose, args.brief)
+        som.save_state(args.state)
     elif args.command == 'clusot':
         if not args.data:
             raise Exception('dataset not specified')

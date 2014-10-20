@@ -135,7 +135,8 @@ class SOM:
             # calculate distance
             dist = 0
             for x1, x2 in zip(vd, node.weights):
-                dist += (x1 - x2) * (x1 - x2)
+                if x1 and x2:
+                    dist += (x1 - x2) * (x1 - x2)
             dist = math.sqrt(dist)
 
             if dist < min_distance:
@@ -154,9 +155,14 @@ class SOM:
             if _nhf > 0:
                 w = node.weights
                 for j in r_inputs:
-                    w[j] = w[j] + _nhf * alpha * (vd[j] - w[j])
+                    if vd[j]:
+                        w[j] = w[j] + _nhf * alpha * (vd[j] - w[j])
 
-    def train(self, data, max_iterations, alpha_func, radius_func, nh_func, verbose):
+
+    def set_columns(cols):
+        self.columns = cols
+
+    def train(self, data, max_iterations, alpha_func, radius_func, nh_func, verbose, brief):
         """train SOM against a given dataset"""
 
         # copy dataset
@@ -171,7 +177,8 @@ class SOM:
             if verbose:
                 aqe = self.avg_quantization_error(data)
                 print('%d\t%f\t%f\t%f' % (t, alpha, radius, aqe))
-            for i in data:
+            tdata = data if not brief else data[:int(len(data)/10)]
+            for i in tdata:
                 bmu = self.find_bmu(i)
                 self.adjust_weights(i, bmu, t, alpha, radius, nh_func)
 
@@ -201,14 +208,14 @@ class SOM:
                 dist += SOM.vector_distance(self.node_at(nx, ny).weights, i.weights)
             yield i, dist / nd
 
-    def save_state(self, filename, columns=None):
+    def save_state(self, filename):
         """save weights to file"""
         f = open(filename, 'w')
 
         # headers
         f.write('n\tx\ty')
         for i in range(self.num_inputs):
-            colname = columns[i] if columns else 'w%d' % i
+            colname = columns[i] if self.columns else 'w%d' % i
             f.write('\t%s' % colname)
         f.write('\n')
 
@@ -242,6 +249,7 @@ class SOM:
     def load_data(self, filename):
         """load dataset from file
            skip columns with name starting from '-'
+           empty cell or 'NULL' is treated as missing data
            """
         data = []
 
@@ -252,7 +260,7 @@ class SOM:
         for r in f:
             row = r.strip().split('\t')
             data.append(
-                [float(x) if x != '' else None for c, x in zip(columns, row) if c[0] != '-'])
+                [float(x) if x != '' and x != 'NULL' else None for c, x in zip(columns, row) if c[0] != '-'])
 
         if len(col_inputs) != self.num_inputs:
             raise Exception("number of inputs in the file doesn't match network setup")
