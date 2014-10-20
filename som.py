@@ -74,13 +74,6 @@ class Node:
         self.y = y
         self.weights = w
 
-    def distance_to(self, node):
-        """euclidian distance to another node based on (x, y) node location"""
-        return math.sqrt(
-            (self.x - node.x) * (self.x - node.x) 
-            + (self.y - node.y) * (self.y - node.y)
-        )
-
     def __lt__(self, other):
         return self.n < other.n
 
@@ -109,6 +102,23 @@ class SOM:
         pos = y * self.width + x
         return self.nodes[pos]
 
+    def simple_node_distance(self, node1, node2):
+        """euclidian distance to another node based on (x, y) node location"""
+        return math.sqrt(
+            (node1.x - node2.x) * (node1.x - node2.x) 
+            + (node1.y - node2.y) * (node1.y - node2.y)
+        )
+
+    def toroidal_node_distance(self, node1, node2):
+        """euclidian distance to another node on a toroidal map"""
+        x_min = min(node1.x, node2.x)
+        x_max = max(node1.x, node2.x)
+        y_min = min(node1.y, node2.y)
+        y_max = max(node1.y, node2.y)
+        delta_x = min(x_max - x_min, x_min + self.width - x_max)
+        delta_y = min(y_max - y_min, y_min + self.height - y_max)
+        return math.sqrt(delta_x * delta_x + delta_y * delta_y)
+
     @staticmethod
     def shuffle(d):
         """shuffle dataset"""
@@ -132,12 +142,7 @@ class SOM:
         bmu = []
         
         for node in self.nodes:
-            # calculate distance
-            dist = 0
-            for x1, x2 in zip(vd, node.weights):
-                if x1 and x2:
-                    dist += (x1 - x2) * (x1 - x2)
-            dist = math.sqrt(dist)
+            dist = SOM.vector_distance(vd, node.weights)
 
             if dist < min_distance:
                 min_distance = dist
@@ -147,11 +152,11 @@ class SOM:
         
         return bmu[int(random.random() * len(bmu))]
 
-    def adjust_weights(self, vd, bmu, t, alpha, radius, nh_func):
+    def adjust_weights(self, vd, bmu, t, alpha, radius, nh_func, node_distance):
         """adjust map according to BMU"""
         r_inputs = range(self.num_inputs)
         for node in self.nodes:
-            _nhf = nh_func(bmu.distance_to(node), radius)
+            _nhf = nh_func(node_distance(bmu, node), radius)
             if _nhf > 0:
                 w = node.weights
                 for j in r_inputs:
@@ -159,11 +164,14 @@ class SOM:
                         w[j] = w[j] + _nhf * alpha * (vd[j] - w[j])
 
 
-    def set_columns(cols):
+    def set_columns(self, cols):
         self.columns = cols
 
-    def train(self, data, max_iterations, alpha_func, radius_func, nh_func, verbose, brief):
+    def train(self, data, max_iterations, alpha_func, radius_func, nh_func, toroidal,
+              verbose, brief):
         """train SOM against a given dataset"""
+
+        node_distance = self.toroidal_node_distance if toroidal else self.simple_node_distance
 
         # copy dataset
         data = list(data)
@@ -180,7 +188,7 @@ class SOM:
             tdata = data if not brief else data[:int(len(data)/10)]
             for i in tdata:
                 bmu = self.find_bmu(i)
-                self.adjust_weights(i, bmu, t, alpha, radius, nh_func)
+                self.adjust_weights(i, bmu, t, alpha, radius, nh_func, node_distance)
 
     def avg_quantization_error(self, data):
         """calculate map total error"""
@@ -215,8 +223,7 @@ class SOM:
         # headers
         f.write('n\tx\ty')
         for i in range(self.num_inputs):
-            colname = columns[i] if self.columns else 'w%d' % i
-            f.write('\t%s' % colname)
+            f.write('\t%s' % self.columns[i])
         f.write('\n')
 
         # nodes

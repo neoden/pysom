@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--radius', help='Radius function parameters: variant,arg1,arg2...')
     parser.add_argument('--nh', help='Neighbourhood function variant')
     parser.add_argument('--maxiter', help='Maximum iterations')
+    parser.add_argument('-t', '--toroidal', help='Toroidal map', action='store_true')
     parser.add_argument('-v', '--verbose', help='Additional information while training', action='store_true')
     args = parser.parse_args()
 
@@ -100,7 +101,8 @@ def main():
 
         columns, data = som.load_data(args.data)
         som.set_columns(columns)
-        som.train(data, max_iterations, alpha_func, radius_func, nh_func, args.verbose, args.brief)
+        som.train(data, max_iterations, alpha_func, radius_func, nh_func, args.toroidal, 
+            args.verbose, args.brief)
         som.save_state(args.state)
 
     elif args.command == 'clusot':
