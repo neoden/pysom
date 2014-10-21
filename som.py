@@ -159,6 +159,10 @@ class SOM:
             _nhf = nh_func(node_distance(bmu, node), radius)
             if _nhf > 0:
                 w = node.weights
+#
+                if len(vd) != self.num_inputs:
+                    print(vd)
+#
                 for j in r_inputs:
                     if vd[j]:
                         w[j] = w[j] + _nhf * alpha * (vd[j] - w[j])
@@ -182,13 +186,13 @@ class SOM:
             SOM.shuffle(data)
             alpha = alpha_func(t)
             radius = radius_func(t)
-            if verbose:
-                aqe = self.avg_quantization_error(data)
-                print('%d\t%f\t%f\t%f' % (t, alpha, radius, aqe))
             tdata = data if not brief else data[:int(len(data)/10)]
             for i in tdata:
                 bmu = self.find_bmu(i)
                 self.adjust_weights(i, bmu, t, alpha, radius, nh_func, node_distance)
+            if verbose:
+                aqe = self.avg_quantization_error(data)
+                print('%d\t%f\t%f\t%f' % (t, alpha, radius, aqe))
 
     def avg_quantization_error(self, data):
         """calculate map total error"""
@@ -241,10 +245,10 @@ class SOM:
 
         f = open(filename)
         r = next(f)
-        self.columns = r.strip().split('\t')[3:]
+        self.columns = r.rstrip('\n').split('\t')[3:]
 
         for r in f:
-            row = r.strip().split('\t')
+            row = r.rstrip('\n').split('\t')
             n, x, y, weights = int(row[0]), int(row[1]), int(row[2]), [float(x) for x in row[3:]]
             self.nodes.append(Node(n, x, y, weights))
 
@@ -262,11 +266,11 @@ class SOM:
         data = []
 
         f = open(filename)
-        columns = [x for x in next(f).strip().split('\t')]
+        columns = [x for x in next(f).rstrip('\n').split('\t')]
         col_inputs = [x for x in columns if x[0] != '-']
 
         for r in f:
-            row = r.strip().split('\t')
+            row = r.rstrip('\n').split('\t')
             data.append(
                 [float(x) if x != '' and x != 'NULL' else None for c, x in zip(columns, row) if c[0] != '-'])
 
